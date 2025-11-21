@@ -1,55 +1,54 @@
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import numpy as np
 import joblib
+import numpy as np
 
-app = FastAPI(title="House Price Prediction API")
+app = FastAPI(title="House Price Predictor")
 
-# Define input features
+# Five important features
 class HouseFeatures(BaseModel):
     bedrooms: int
-    bathrooms: float
-    sqft_living: int
-    sqft_lot: int
-    floors: float
-    age: int
-    zipcode: int
-    condition: int
-    grade: int
-    waterfront: int
-    view: int
-    renovated: int
+    bathrooms: int
+    sqft: float
+    age: float
+    location_score: float
 
-# Load model
-model = joblib.load("model.pkl")
 
-@app.post("/predict")
+class PredictionResponse(BaseModel):
+    prediction: float
+
+
+# Load model at startup
+@app.on_event("startup")
+def load_model():
+    global model
+    try:
+        model = joblib.load("model.pkl")
+    except Exception as e:
+        raise RuntimeError(f"Could not load model.pkl: {e}")
+
+
+@app.post("/predict", response_model=PredictionResponse)
 def predict_price(data: HouseFeatures):
-    features = [
-        data.bedrooms,
-        data.bathrooms,
-        data.sqft_living,
-        data.sqft_lot,
-        data.floors,
-        data.age,
-        data.zipcode,
-        data.condition,
-        data.grade,
-        data.waterfront,
-        data.view,
-        data.renovated
-    ]
 
-    arr = np.array(features).reshape(1, -1)
-    prediction = model.predict(arr)[0]
+    try:
+        features = np.array([
+            data.bedrooms,
+            data.bathrooms,
+            data.sqft,
+            data.age,
+            data.location_score
+        ]).reshape(1, -1)
 
-    return {
-        "predicted_price": float(prediction),
-        "currency": "INR",
-        "message": "Price prediction successful!"
-    }
+        price = model.predict(features)[0]
+
+        return PredictionResponse(prediction=float(price))
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-
-
+@app.get("/")
+def home():
+    return {"message": "House Price Prediction API is running."}
