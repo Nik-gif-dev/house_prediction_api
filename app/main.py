@@ -1,32 +1,55 @@
-from fastapi import FastAPI, HTTPException
+
+from fastapi import FastAPI
 from pydantic import BaseModel
-import joblib
 import numpy as np
-import os
-from typing import List
+import joblib
 
-MODEL_PATH = os.getenv("MODEL_PATH", "model.pkl")
+app = FastAPI(title="House Price Prediction API")
 
-app = FastAPI(title="House Price Predictor", version="1.0")
+# Define input features
+class HouseFeatures(BaseModel):
+    bedrooms: int
+    bathrooms: float
+    sqft_living: int
+    sqft_lot: int
+    floors: float
+    age: int
+    zipcode: int
+    condition: int
+    grade: int
+    waterfront: int
+    view: int
+    renovated: int
 
-class PredictRequest(BaseModel):
-    features: List[float]
+# Load model
+model = joblib.load("model.pkl")
 
-class PredictResponse(BaseModel):
-    prediction: float
+@app.post("/predict")
+def predict_price(data: HouseFeatures):
+    features = [
+        data.bedrooms,
+        data.bathrooms,
+        data.sqft_living,
+        data.sqft_lot,
+        data.floors,
+        data.age,
+        data.zipcode,
+        data.condition,
+        data.grade,
+        data.waterfront,
+        data.view,
+        data.renovated
+    ]
 
-@app.on_event("startup")
-def load_model():
-    global model
-    model = joblib.load(MODEL_PATH)
+    arr = np.array(features).reshape(1, -1)
+    prediction = model.predict(arr)[0]
 
-@app.post("/predict", response_model=PredictResponse)
-def predict(req: PredictRequest):
-    arr = np.array(req.features).reshape(1, -1)
-    pred = model.predict(arr)[0]
-    return PredictResponse(prediction=float(pred))
+    return {
+        "predicted_price": float(prediction),
+        "currency": "INR",
+        "message": "Price prediction successful!"
+    }
 
-@app.get("/")
-def home():
-    return {"message": "House Prediction Model API"}
+
+
 
