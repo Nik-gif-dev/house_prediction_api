@@ -53,7 +53,7 @@ def predict_price(data: HouseFeatures):
         price = model.predict(features)[0]
 
         # Format message (your requirement)
-        formatted_price = f"Estimated house value: ₹{int(price):,}"
+        formatted_price = f"Estimated house price : ₹{int(price):,}"
 
         return PredictionResponse(message=formatted_price)
 
@@ -64,6 +64,7 @@ def predict_price(data: HouseFeatures):
 @app.get("/")
 def home():
     return {"message": "House Price Prediction API is running."}
+
 
 
 
