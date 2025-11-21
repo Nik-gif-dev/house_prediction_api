@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import joblib
@@ -16,7 +15,7 @@ class HouseFeatures(BaseModel):
 
 
 class PredictionResponse(BaseModel):
-    prediction: float
+    prediction: int  # changed to int
 
 
 # Load model at startup
@@ -42,8 +41,9 @@ def predict_price(data: HouseFeatures):
         ]).reshape(1, -1)
 
         price = model.predict(features)[0]
+        price = round(float(price))   # <<< THIS IS THE CHANGE
 
-        return PredictionResponse(prediction=float(price))
+        return PredictionResponse(prediction=price)
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -52,3 +52,4 @@ def predict_price(data: HouseFeatures):
 @app.get("/")
 def home():
     return {"message": "House Price Prediction API is running."}
+
