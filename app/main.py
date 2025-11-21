@@ -1,24 +1,31 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import joblib
 import numpy as np
 
-app = FastAPI(title="House Price Predictor")
+app = FastAPI(
+    title="House Price Predictor API",
+    description="This API predicts the price of a house using 5 important features.",
+    version="1.0"
+)
 
-# Five important features
+# Input features with descriptions
 class HouseFeatures(BaseModel):
-    bedrooms: int
-    bathrooms: int
-    sqft: float
-    age: float
-    location_score: float
+    bedrooms: int = Field(..., description="Number of bedrooms in the house")
+    bathrooms: int = Field(..., description="Number of bathrooms in the house")
+    sqft: float = Field(..., description="Total built-up area in square feet")
+    age: float = Field(..., description="Age of the house in years")
+    location_score: float = Field(
+        ..., 
+        description="Location rating from 1 to 10 (10 = best area)"
+    )
 
-
+# Output response
 class PredictionResponse(BaseModel):
-    prediction: int  # changed to int
+    message: str
 
 
-# Load model at startup
+# Load the ML model
 @app.on_event("startup")
 def load_model():
     global model
@@ -30,6 +37,9 @@ def load_model():
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict_price(data: HouseFeatures):
+    """
+    Predicts house price based on 5 features.
+    """
 
     try:
         features = np.array([
@@ -41,10 +51,12 @@ def predict_price(data: HouseFeatures):
         ]).reshape(1, -1)
 
         price = model.predict(features)[0]
-        price = round(float(price))   # <<< THIS IS THE CHANGE
 
-        return PredictionResponse(prediction=price)
-        
+        # Format message (your requirement)
+        formatted_price = f"Estimated house value: ₹{int(price):,}"
+
+        return PredictionResponse(message=formatted_price)
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -52,4 +64,6 @@ def predict_price(data: HouseFeatures):
 @app.get("/")
 def home():
     return {"message": "House Price Prediction API is running."}
+
+
 
